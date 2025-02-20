@@ -1,7 +1,6 @@
 import os
 import csv
 from typing import List, Dict, Set
-from itertools import combinations
 from collections import defaultdict
 
 
@@ -159,6 +158,81 @@ def generate_frequent_itemsets(
     return L
 
 
+def get_maximal_itemsets(
+    L: Dict[int, Dict[frozenset, int]],
+) -> Dict[frozenset, int]:
+    """
+    Extract maximal frequent itemsets (those with no frequent superset).
+
+    Description:
+    - For each level L(k), we check if each itemset is a strict subset of any larger frequent itemset in L(k+1).
+    - If it is, then the itemset is not maximal and is removed from the list of maximal itemsets.
+
+    Parameters:
+    - L (Dict[int, Dict[frozenset, int]]): Dictionary of frequent itemsets.
+
+    Returns:
+    - (Dict[frozenset, int]): Dictionary containing maximal frequent itemsets.
+    """
+
+    # Initially, all itemsets from flattened L
+    maximal_itemsets = {i: s for k, L_k in L.items() for i, s in L_k.items()}
+
+    # For each level L(k)
+    for k, _ in L.items():
+        # For each itemset in L(k)
+        for itemset in L.get(k):
+            # For each larger itemset in L(k+1)
+            for other_larger in L.get(k + 1, []):
+                # Strict subset
+                if itemset < other_larger:
+                    # Itemset is not maximal
+                    maximal_itemsets.pop(itemset, None)
+                    break
+
+    return maximal_itemsets
+
+
+def get_closed_itemsets(
+    L: Dict[int, Dict[frozenset, int]],
+) -> Dict[frozenset, int]:
+    """
+    Extract closed frequent itemsets (those whose supersets have a different support).
+
+    Description:
+    - For each level L(k), we check if each itemset is a strict subset with the same support of any larger frequent itemset in L(k+1).
+    - If it is, then the itemset is not closed and not added to the list of closed itemsets.
+
+    Parameters:
+    - L (Dict[int, Dict[frozenset, int]]): Dictionary of frequent itemsets.
+
+    Returns:
+    - (Dict[frozenset, int]): Dictionary containing closed frequent itemsets.
+    """
+
+    # Initially, no closed itemsets
+    closed_itemsets = {}
+
+    # For each level L(k)
+    for k, _ in L.items():
+        # For each itemset in L(k)
+        for itemset, support in L.get(k).items():
+            is_closed = True
+            # For each larger itemset in L(k+1)
+            # If there is no L(k+1), then the itemset is closed
+            for other_larger, other_larger_support in L.get(k + 1, {}).items():
+                # Strict subset with same support
+                if itemset < other_larger and support == other_larger_support:
+                    # Itemset is not closed
+                    is_closed = False
+                    break
+            # If the itemset is closed, add it to the list of closed itemsets
+            if is_closed:
+                closed_itemsets[itemset] = support
+
+    return closed_itemsets
+
+
 if __name__ == "__main__":
     # TODO change for final data file
     DATA_FILE = os.getenv("DATA_FILE", "data/test.csv")
@@ -174,8 +248,27 @@ if __name__ == "__main__":
         transactions, transactions_index, MIN_SUPPORT
     )
 
+    print("------------------")
     print("Frequent Itemsets:")
+    print("------------------")
     for k, L_k in frequent_itemsets.items():
-        print(f"\tL({k + 1}):")
+        print(f"L({k + 1}):")
         for itemset, count in L_k.items():
-            print(f"\t\t- {set(itemset)}: {count}")
+            print(f"  - {set(itemset)}: {count}")
+    print()
+
+    maximal_itemsets = get_maximal_itemsets(frequent_itemsets)
+    print("--------------------------")
+    print("Maximal Frequent Itemsets:")
+    print("--------------------------")
+    for itemset, count in maximal_itemsets.items():
+        print(f" - {set(itemset)}: {count}")
+    print()
+
+    closed_itemsets = get_closed_itemsets(frequent_itemsets)
+    print("--------------------------")
+    print("Closed Frequent Itemsets:")
+    print("--------------------------")
+    for itemset, count in closed_itemsets.items():
+        print(f" - {set(itemset)}: {count}")
+    print()
