@@ -4,6 +4,11 @@ from typing import List, Dict, Set
 from collections import defaultdict
 
 
+################################################################################
+# Transactions
+################################################################################
+
+
 def read_items(filename: str) -> List[Set[str]]:
     """
     Read items from a CSV file where each row represents a transaction.
@@ -28,27 +33,46 @@ def build_transactions_inverted_index(T: List[Set[str]]) -> Dict[str, Set[int]]:
     return T_index
 
 
-def compute_support(
-    itemset: Set[str],
+################################################################################
+# Frequent Itemsets
+################################################################################
+
+
+def generate_frequent_itemsets(
+    T: List[Set[str]],
     T_index: Dict[str, Set[int]],
-) -> int:
+    min_support: int,
+) -> Dict[int, Dict[frozenset, int]]:
     """
-    Compute the support of an itemset by intersecting the transaction sets of its items.
+    Generate all frequent itemsets using a recursive depth-first search strategy.
 
     Parameters:
-    - itemset (Set[str]): Itemset for which to compute support.
+    - T (List[Set[str]]): List of transactions where each transaction is a set of items.
     - T_index (Dict[str, Set[int]]): Inverted index mapping each item to the set of transaction indices in which it appears.
+    - min_support (int): Minimum support threshold.
 
     Returns:
-    - (int): Support count of the itemset.
+    - (Dict[int, Dict[frozenset, int]]): Dictionary of frequent itemsets.
     """
-    # Get the transaction sets for each item
-    sets = [T_index[item] for item in itemset if item in T_index]
-    if not sets:
-        return 0
-    # Intersection of all transaction sets gives the transactions that contain the entire itemset.
-    common_transactions = set.intersection(*sets)
-    return len(common_transactions)
+
+    # L - Frequent itemsets
+    L = {}
+
+    # C(1) - Candidate itemsets of size 1
+    # Generate C(1): all unique items in transactions
+    C_1 = defaultdict(int)
+    for t in T:
+        for item in t:
+            C_1[item] += 1
+
+    # Filter by min_support
+    # L(1) - Frequent itemsets of size 1
+    L[1] = {item: support for item, support in C_1.items() if support >= min_support}
+
+    # Start mining from single-item frequent sets
+    L = find_frequent_sets_rec(T_index, min_support, set(), L[1], 1)
+
+    return L
 
 
 def find_frequent_sets_rec(
@@ -121,41 +145,32 @@ def find_frequent_sets_rec(
     return L_rec
 
 
-def generate_frequent_itemsets(
-    T: List[Set[str]],
+def compute_support(
+    itemset: Set[str],
     T_index: Dict[str, Set[int]],
-    min_support: int,
-) -> Dict[int, Dict[frozenset, int]]:
+) -> int:
     """
-    Generate all frequent itemsets using a recursive depth-first search strategy.
+    Compute the support of an itemset by intersecting the transaction sets of its items.
 
     Parameters:
-    - T (List[Set[str]]): List of transactions where each transaction is a set of items.
+    - itemset (Set[str]): Itemset for which to compute support.
     - T_index (Dict[str, Set[int]]): Inverted index mapping each item to the set of transaction indices in which it appears.
-    - min_support (int): Minimum support threshold.
 
     Returns:
-    - (Dict[int, Dict[frozenset, int]]): Dictionary of frequent itemsets.
+    - (int): Support count of the itemset.
     """
+    # Get the transaction sets for each item
+    sets = [T_index[item] for item in itemset if item in T_index]
+    if not sets:
+        return 0
+    # Intersection of all transaction sets gives the transactions that contain the entire itemset.
+    common_transactions = set.intersection(*sets)
+    return len(common_transactions)
 
-    # L - Frequent itemsets
-    L = {}
 
-    # C(1) - Candidate itemsets of size 1
-    # Generate C(1): all unique items in transactions
-    C_1 = defaultdict(int)
-    for t in T:
-        for item in t:
-            C_1[item] += 1
-
-    # Filter by min_support
-    # L(1) - Frequent itemsets of size 1
-    L[1] = {item: support for item, support in C_1.items() if support >= min_support}
-
-    # Start mining from single-item frequent sets
-    L = find_frequent_sets_rec(T_index, min_support, set(), L[1], 1)
-
-    return L
+################################################################################
+# Maximal and Closed Itemsets
+################################################################################
 
 
 def get_maximal_itemsets(
@@ -233,10 +248,57 @@ def get_closed_itemsets(
     return closed_itemsets
 
 
+################################################################################
+# Others
+################################################################################
+
+
+def print_itemsets(
+    frequent_itemsets: Dict[int, Dict[frozenset, int]],
+    maximal_itemsets: Dict[frozenset, int],
+    closed_itemsets: Dict[frozenset, int],
+) -> None:
+    """
+    Print frequent itemsets, maximal frequent itemsets, and closed frequent itemsets.
+
+    Parameters:
+    - frequent_itemsets (Dict[int, Dict[frozenset, int]]): Dictionary of frequent itemsets.
+    - maximal_itemsets (Dict[frozenset, int]): Dictionary of maximal frequent itemsets.
+    - closed_itemsets (Dict[frozenset, int]): Dictionary of closed frequent itemsets.
+    """
+
+    print("------------------")
+    print("Frequent Itemsets:")
+    print("------------------")
+    for k, L_k in frequent_itemsets.items():
+        print(f"L({k}):")
+        for itemset, count in L_k.items():
+            print(f"  - {set(itemset)}: {count}")
+    print()
+
+    print("--------------------------")
+    print("Maximal Frequent Itemsets:")
+    print("--------------------------")
+    for itemset, count in maximal_itemsets.items():
+        print(f" - {set(itemset)}: {count}")
+    print()
+
+    print("--------------------------")
+    print("Closed Frequent Itemsets:")
+    print("--------------------------")
+    for itemset, count in closed_itemsets.items():
+        print(f" - {set(itemset)}: {count}")
+    print()
+
+
+################################################################################
+# Main
+################################################################################
+
+
 if __name__ == "__main__":
-    # TODO change for final data file
-    DATA_FILE = os.getenv("DATA_FILE", "data/test.csv")
-    MIN_SUPPORT = int(os.getenv("MIN_SUPPORT", "2"))
+    DATA_FILE = os.getenv("DATA_FILE", "data/data.csv")
+    MIN_SUPPORT = int(os.getenv("MIN_SUPPORT", "6"))
 
     # T - List of transactions
     transactions = read_items(DATA_FILE)
@@ -248,27 +310,7 @@ if __name__ == "__main__":
         transactions, transactions_index, MIN_SUPPORT
     )
 
-    print("------------------")
-    print("Frequent Itemsets:")
-    print("------------------")
-    for k, L_k in frequent_itemsets.items():
-        print(f"L({k + 1}):")
-        for itemset, count in L_k.items():
-            print(f"  - {set(itemset)}: {count}")
-    print()
-
     maximal_itemsets = get_maximal_itemsets(frequent_itemsets)
-    print("--------------------------")
-    print("Maximal Frequent Itemsets:")
-    print("--------------------------")
-    for itemset, count in maximal_itemsets.items():
-        print(f" - {set(itemset)}: {count}")
-    print()
-
     closed_itemsets = get_closed_itemsets(frequent_itemsets)
-    print("--------------------------")
-    print("Closed Frequent Itemsets:")
-    print("--------------------------")
-    for itemset, count in closed_itemsets.items():
-        print(f" - {set(itemset)}: {count}")
-    print()
+
+    print_itemsets(frequent_itemsets, maximal_itemsets, closed_itemsets)
