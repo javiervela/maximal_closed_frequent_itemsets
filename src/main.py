@@ -198,9 +198,9 @@ def get_maximal_itemsets(
         # For each itemset in L(k)
         for itemset in L.get(k):
             # For each larger itemset in L(k+1)
-            for other_larger in L.get(k + 1, []):
-                # Strict subset
-                if itemset < other_larger:
+            for other in L.get(k + 1, []):
+                # Strict subset (other is superset of itemset)
+                if itemset < other:
                     # Itemset is not maximal
                     maximal_itemsets.pop(itemset, None)
                     break
@@ -235,9 +235,9 @@ def get_closed_itemsets(
             is_closed = True
             # For each larger itemset in L(k+1)
             # If there is no L(k+1), then the itemset is closed
-            for other_larger, other_larger_support in L.get(k + 1, {}).items():
-                # Strict subset with same support
-                if itemset < other_larger and support == other_larger_support:
+            for other, other_support in L.get(k + 1, {}).items():
+                # Strict subset (other is superset of itemset) with same support
+                if itemset < other and support == other_support:
                     # Itemset is not closed
                     is_closed = False
                     break
@@ -298,7 +298,7 @@ def print_itemsets(
 
 if __name__ == "__main__":
     DATA_FILE = os.getenv("DATA_FILE", "data/data.csv")
-    MIN_SUPPORT = int(os.getenv("MIN_SUPPORT", "6"))
+    MIN_SUPPORT = int(os.getenv("MIN_SUPPORT", "5"))
 
     # T - List of transactions
     transactions = read_items(DATA_FILE)
