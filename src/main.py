@@ -15,9 +15,9 @@ def read_items(filename: str) -> List[Set[str]]:
     """
     T = []
     with open(filename, "r", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
+        reader = csv.reader(file)
         for row in reader:
-            items = set(row["items"])
+            items = set(row)
             T.append(items)
     return T
 

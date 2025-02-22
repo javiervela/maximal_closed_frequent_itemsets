@@ -30,12 +30,11 @@ The dataset is a CSV file with the following format:
 - `data/test.csv` [Dataset](data/test.csv)
 
   ```csv
-  id,items
-  1,ABC
-  2,ABCD
-  3,BCE
-  4,ACDE
-  5,DE
+  A,B,C
+  A,B,C,D
+  B,C,E
+  A,C,D,E
+  D,E
   ```
 
 The `id` column is the identifier of the transaction, but is not used by the program. The `items` column contains the items of the transaction, separated by no spaces.
